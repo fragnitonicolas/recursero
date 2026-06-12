@@ -341,7 +341,7 @@ Reglas:
 - Solo usá recursos del listado. Respondé en español. Devolvé SOLO el JSON.`;
 
 async function callGemini(q) {
-  const url = \`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=\${GEMINI_API_KEY}\`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
   const res = await fetch(url, {
     method:"POST",
     headers:{"Content-Type":"application/json"},
@@ -370,14 +370,14 @@ function renderCard(item) {
   let fields = "";
   for (const [k,v] of Object.entries(d)) {
     if (HIDDEN.has(k) || !v || !String(v).trim()) continue;
-    fields += \`<div class="card-field"><span class="card-label">\${FIELD_LABELS[k]||k}</span><span class="card-value">\${esc(String(v))}</span></div>\`;
+    fields += `<div class="card-field"><span class="card-label">${FIELD_LABELS[k]||k}</span><span class="card-value">${esc(String(v))}</span></div>`;
   }
-  return \`<div class="card">
-    <div class="card-category">\${esc(cat)}</div>
-    <div class="card-organismo">\${esc(org)}</div>
-    \${expl?\`<div class="card-relevancia">\${esc(expl)}</div>\`:""}
-    \${fields?\`<hr class="card-divider">\${fields}`:""}
-  </div>\`;
+  return `<div class="card">
+    <div class="card-category">${esc(cat)}</div>
+    <div class="card-organismo">${esc(org)}</div>
+    ${expl?`<div class="card-relevancia">${esc(expl)}</div>`:""}
+    ${fields?`<hr class="card-divider">${fields}`:""}
+  </div>`;
 }
 
 function appendMsg(html, cls) {
@@ -403,27 +403,27 @@ async function sendQuery() {
   const welcome = document.getElementById("welcome");
   if (welcome) welcome.remove();
   input.value = ""; btn.disabled = true;
-  appendMsg(\`<div class="bubble">\${esc(q)}</div>\`, "msg-user");
-  const thinking = appendMsg(\`<p class="thinking">Consultando recursos…</p>\`, "msg-system");
+  appendMsg(`<div class="bubble">${esc(q)}</div>`, "msg-user");
+  const thinking = appendMsg(`<p class="thinking">Consultando recursos…</p>`, "msg-system");
   try {
     const raw = await callGemini(q);
     thinking.remove();
     let results;
     try { results = parse(raw); } catch(e) {
-      appendMsg(\`<div class="error-msg"><strong>No se pudo procesar la respuesta.</strong><br><small>\${esc(raw.slice(0,300))}</small></div>\`,"msg-system");
+      appendMsg(`<div class="error-msg"><strong>No se pudo procesar la respuesta.</strong><br><small>${esc(raw.slice(0,300))}</small></div>`,"msg-system");
       return;
     }
     if (!Array.isArray(results)||results.length===0) {
-      appendMsg(\`<div class="error-msg">No se encontraron recursos relevantes.</div>\`,"msg-system");
+      appendMsg(`<div class="error-msg">No se encontraron recursos relevantes.</div>`,"msg-system");
       return;
     }
     const cards = results.map(renderCard).join("");
-    appendMsg(\`<div class="msg-system"><p class="result-header">\${results.length} recurso\${results.length!==1?"s":""} identificado\${results.length!==1?"s":""}</p><div class="cards-grid">\${cards}</div></div>\`,"msg-system");
+    appendMsg(`<div class="msg-system"><p class="result-header">${results.length} recurso${results.length!==1?"s":""} identificado${results.length!==1?"s":""}</p><div class="cards-grid">${cards}</div></div>`,"msg-system");
   } catch(err) {
     thinking.remove();
     // If API key is wrong, prompt again
     if (err.message.includes("400")||err.message.includes("401")||err.message.includes("403")) {
-      appendMsg(\`<div class="error-msg"><strong>Error:</strong> \${esc(err.message)}</div>\`,"msg-system");
+      appendMsg(`<div class="error-msg"><strong>Error:</strong> ${esc(err.message)}</div>`,"msg-system");
   } finally {
     btn.disabled = false; input.focus();
   }
