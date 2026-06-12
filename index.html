@@ -548,12 +548,7 @@ function checkKey() {
 // Add settings link to header
 document.addEventListener("DOMContentLoaded", function() {
   checkKey();
-  const hdr = document.querySelector(".header-text");
-  const btn = document.createElement("button");
-  btn.textContent = "⚙ API Key";
-  btn.style = "margin-top:4px;border:1px solid #999;background:none;padding:3px 8px;font-size:0.7rem;letter-spacing:0.05em;cursor:pointer;font-family:Georgia,serif;color:#555;";
-  btn.onclick = () => { document.getElementById("keyModal").style.display = "flex"; };
-  hdr.appendChild(btn);
+  // key is locked once set
 });
 
 document.getElementById("query").addEventListener("keydown", function(e) {
