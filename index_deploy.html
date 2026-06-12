@@ -421,7 +421,15 @@ async function sendQuery() {
     appendMsg(`<div class="msg-system"><p class="result-header">${results.length} recurso${results.length!==1?"s":""} identificado${results.length!==1?"s":""}</p><div class="cards-grid">${cards}</div></div>`,"msg-system");
   } catch(err) {
     thinking.remove();
-    appendMsg(`<div class="error-msg"><strong>Error:</strong> ${esc(err.message)}</div>`,"msg-system");
+    let msg = err.message || "Error desconocido";
+    if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
+      msg = "Límite de consultas alcanzado. La clave gratuita de Gemini tiene un máximo diario. Intentá de nuevo en unos minutos o mañana.";
+    } else if (msg.includes("401") || msg.includes("403") || msg.includes("API_KEY")) {
+      msg = "Clave de API inválida o sin permisos. Verificá la configuración.";
+    } else if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+      msg = "Sin conexión a Internet. Verificá tu red e intentá nuevamente.";
+    }
+    appendMsg(`<div class="error-msg"><strong>Aviso:</strong> ${esc(msg)}</div>`,"msg-system");
   } finally {
     btn.disabled = false; input.focus();
   }
