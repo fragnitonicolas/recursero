@@ -1,3 +1,5 @@
 *.xlsx
 recursos.json
 recursos_clean.json
+config.js
+index.html

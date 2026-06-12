@@ -235,12 +235,6 @@
     #sendBtn:disabled { background: var(--gray-400); cursor: not-allowed; border-color: var(--gray-400); }
 
     /* ── KEY MODAL ── */
-    #keyModal {
-      display: none; position: fixed; inset: 0; z-index: 300;
-      background: rgba(250,250,250,0.96);
-      align-items: center; justify-content: center;
-    }
-    #keyModal.active { display: flex; }
     .key-box {
       border: var(--border); padding: 40px;
       max-width: 440px; width: 90%; background: var(--white);
@@ -293,14 +287,6 @@
   </div>
 </header>
 
-<div id="keyModal">
-  <div class="key-box">
-    <h2>Configurar acceso</h2>
-    <p>Para activar el buscador ingresá la clave de acceso provista por la Comisión. Se guarda en este navegador y no vuelve a pedirse.</p>
-    <input id="keyInput" type="password" placeholder="Clave de acceso">
-    <button onclick="saveKey()">Activar buscador</button>
-    <p id="keyError">Clave incorrecta. Consultá con la Comisión.</p>
-  </div>
 </div>
 
 <div class="layout">
@@ -339,23 +325,7 @@ const FIELD_LABELS = {
 };
 const HIDDEN = new Set(["categoria","tipo","organismo"]);
 
-// Key management — stored in localStorage, never in repo
-let GEMINI_API_KEY = localStorage.getItem("cmfjal_key") || "";
-
-function saveKey() {
-  const v = document.getElementById("keyInput").value.trim();
-  if (!v) { document.getElementById("keyError").style.display="block"; return; }
-  GEMINI_API_KEY = v;
-  localStorage.setItem("cmfjal_key", v);
-  document.getElementById("keyModal").classList.remove("active");
-}
-
-function checkKey() {
-  if (!GEMINI_API_KEY) document.getElementById("keyModal").classList.add("active");
-}
-
-document.addEventListener("DOMContentLoaded", checkKey);
-
+const GEMINI_API_KEY = "REEMPLAZAR_CON_CLAVE";
 const SYSTEM = `Sos un asistente especializado en recursos sociales para la Comisión de Familia del CMFJAL (Avellaneda-Lanús), Argentina.
 
 Tenés acceso a esta base de recursos institucionales y comunitarios:
@@ -426,7 +396,6 @@ function useExample(btn) {
 }
 
 async function sendQuery() {
-  if (!GEMINI_API_KEY) { document.getElementById("keyModal").classList.add("active"); return; }
   const input = document.getElementById("query");
   const btn = document.getElementById("sendBtn");
   const q = input.value.trim();
@@ -454,11 +423,7 @@ async function sendQuery() {
     thinking.remove();
     // If API key is wrong, prompt again
     if (err.message.includes("400")||err.message.includes("401")||err.message.includes("403")) {
-      localStorage.removeItem("cmfjal_key"); GEMINI_API_KEY = "";
-      appendMsg(\`<div class="error-msg">Clave incorrecta o expirada. Recargá la página e ingresá la clave nuevamente.</div>\`,"msg-system");
-    } else {
       appendMsg(\`<div class="error-msg"><strong>Error:</strong> \${esc(err.message)}</div>\`,"msg-system");
-    }
   } finally {
     btn.disabled = false; input.focus();
   }
