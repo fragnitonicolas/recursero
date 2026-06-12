@@ -13,16 +13,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inject API key
+      - name: Build site
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          sed "s|REEMPLAZAR_CON_CLAVE|${GEMINI_API_KEY}|g" index_deploy.html > index.html
+          mkdir -p dist
+          sed "s|REEMPLAZAR_CON_CLAVE|${GEMINI_API_KEY}|g" index_deploy.html > dist/index.html
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./
+          publish_dir: ./dist
           publish_branch: gh-pages
-          exclude_assets: '.github,index_deploy.html,*.xlsx,recursos*.json'
