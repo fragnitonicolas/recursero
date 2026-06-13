@@ -325,7 +325,7 @@ const FIELD_LABELS = {
 };
 const HIDDEN = new Set(["categoria","tipo","organismo"]);
 
-const GEMINI_API_KEY = "AQ.Ab8RN6IO5rP-oSz-zgsGfKpbjhfxOlbKfjmEUGE7NYaykUv_lQ";
+const GROQ_API_KEY = "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";
 const SYSTEM = `Sos un asistente especializado en recursos sociales para la Comisión de Familia del CMFJAL (Avellaneda-Lanús), Argentina.
 
 Tenés acceso a esta base de recursos institucionales y comunitarios:
@@ -341,18 +341,19 @@ Reglas:
 - Solo usá recursos del listado. Respondé en español. Devolvé SOLO el JSON.`;
 
 async function callGemini(q) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-  const res = await fetch(url, {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method:"POST",
-    headers:{"Content-Type":"application/json"},
+    headers:{"Content-Type":"application/json","Authorization":"Bearer " + GROQ_API_KEY},
     body: JSON.stringify({
-      contents:[{role:"user",parts:[{text: SYSTEM + "\n\nConsulta: " + q}]}],
-      generationConfig:{temperature:0.2, maxOutputTokens:4096}
+      model:"llama-3.3-70b-versatile",
+      messages:[{role:"user",content: SYSTEM + "\n\nConsulta: " + q}],
+      temperature:0.2,
+      max_tokens:4096
     })
   });
   if (!res.ok) throw new Error("API error " + res.status + ": " + await res.text());
   const d = await res.json();
-  return d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  return d.choices?.[0]?.message?.content || "";
 }
 
 function parse(raw) {
@@ -422,10 +423,10 @@ async function sendQuery() {
   } catch(err) {
     thinking.remove();
     let msg = err.message || "Error desconocido";
-    if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
-      msg = "Límite de consultas alcanzado. La clave gratuita de Gemini tiene un máximo diario. Intentá de nuevo en unos minutos o mañana.";
-    } else if (msg.includes("401") || msg.includes("403") || msg.includes("API_KEY")) {
-      msg = "Clave de API inválida o sin permisos. Verificá la configuración.";
+    if (msg.includes("429") || msg.includes("rate_limit")) {
+      msg = "Límite de consultas alcanzado. Intentá de nuevo en unos minutos.";
+    } else if (msg.includes("401") || msg.includes("403") || msg.includes("invalid_api_key")) {
+      msg = "Clave de API inválida. Verificá la configuración.";
     } else if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
       msg = "Sin conexión a Internet. Verificá tu red e intentá nuevamente.";
     }
