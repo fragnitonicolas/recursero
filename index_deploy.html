@@ -326,27 +326,75 @@ const FIELD_LABELS = {
 const HIDDEN = new Set(["categoria","tipo","organismo"]);
 
 const GROQ_API_KEY = "REEMPLAZAR_CON_CLAVE";
-const SYSTEM = `Sos un asistente especializado en recursos sociales para la Comisión de Familia del CMFJAL (Avellaneda-Lanús), Argentina.
+function preFilter(query) {
+  const q = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const keywords = q.split(/\s+/).filter(w => w.length > 3);
+  
+  const score = (r) => {
+    const text = JSON.stringify(r).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    let s = 0;
+    for (const kw of keywords) {
+      if (text.includes(kw)) s += 2;
+    }
+    // Boost urgency resources if violence/emergency keywords present
+    const urgency = ["violencia","emergencia","911","urgente","riesgo","peligro","agresion","golpes","amenaza"];
+    if (urgency.some(u => q.includes(u))) {
+      const org = (r.organismo||"").toLowerCase();
+      if (org.includes("911") || org.includes("comisaria") || org.includes("comisaría") || org.includes("mujer")) s += 5;
+    }
+    // Category keyword boost
+    const catMap = {
+      "violencia":["denuncia","seguridad","asesoramiento","acompañamiento"],
+      "salud":["salud"], "legal":["justicia","acceso"], "niñez":["niñez","adolescencia"],
+      "trata":["telefónica","virtual"], "mujer":["asesoramiento","género"]
+    };
+    for (const [kw, cats] of Object.entries(catMap)) {
+      if (q.includes(kw) && cats.some(c => (r.categoria||"").toLowerCase().includes(c))) s += 3;
+    }
+    return s;
+  };
 
-Tenés acceso a esta base de recursos institucionales y comunitarios:
+  const scored = RECURSOS.map(r => ({r, s: score(r)})).filter(x => x.s > 0);
+  scored.sort((a,b) => b.s - a.s);
+  // Always include 911 and Comisaría if violence mentioned
+  const urgency = ["violencia","emergencia","riesgo","agresion","golpes","amenaza","peligro"];
+  if (urgency.some(u => q.includes(u))) {
+    const always = RECURSOS.filter(r => {
+      const org = (r.organismo||"").toLowerCase();
+      return org.includes("911") || (org.includes("comisaria") && org.includes("mujer"));
+    });
+    const ids = new Set(always.map(r => r.organismo));
+    const rest = scored.filter(x => !ids.has(x.r.organismo)).slice(0,22).map(x=>x.r);
+    return [...always, ...rest];
+  }
+  return scored.slice(0,25).map(x => x.r);
+}
 
-${JSON.stringify(RECURSOS, null, 1)}
+function buildSystem(recursos) {
+  return `Sos un asistente especializado en recursos sociales para la Comisión de Familia del CMFJAL (Avellaneda-Lanús), Argentina.
 
-Cuando el usuario describa una situación, devolvé ÚNICAMENTE un array JSON válido (sin texto extra, sin markdown) con los recursos más relevantes, ordenados por relevancia. Estructura de cada elemento:
+Tenés acceso a estos recursos institucionales y comunitarios pre-seleccionados:
+
+${JSON.stringify(recursos, null, 1)}
+
+Devolvé ÚNICAMENTE un array JSON válido (sin texto extra, sin markdown) con los recursos más relevantes, ordenados por relevancia. Estructura de cada elemento:
 {"organismo":"nombre exacto","categoria":"categoría","relevancia_explicacion":"una oración concisa explicando por qué es adecuado","datos":{todos los campos del recurso}}
 
 Reglas:
 - Entre 3 y 8 recursos. Si hay riesgo inmediato incluí siempre 911 y Comisaría de la Mujer primero.
 - Si se menciona localidad, priorizá esa. Si no, incluí ambas (Avellaneda y Lanús).
 - Solo usá recursos del listado. Respondé en español. Devolvé SOLO el JSON.`;
+}
 
 async function callGemini(q) {
+  const candidatos = preFilter(q);
+  const system = buildSystem(candidatos);
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method:"POST",
     headers:{"Content-Type":"application/json","Authorization":"Bearer " + GROQ_API_KEY},
     body: JSON.stringify({
       model:"llama-3.3-70b-versatile",
-      messages:[{role:"user",content: SYSTEM + "\n\nConsulta: " + q}],
+      messages:[{role:"user",content: system + "\n\nConsulta: " + q}],
       temperature:0.2,
       max_tokens:4096
     })
